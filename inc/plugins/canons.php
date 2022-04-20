@@ -810,14 +810,14 @@ function canons_activate()
 {
     require MYBB_ROOT . "/inc/adminfunctions_templates.php";
     find_replace_templatesets("header", "#".preg_quote('<navigation>')."#i", '{$alert_canons}<navigation>');
-
+    find_replace_templatesets("modcp_nav", "#".preg_quote('{$modcp_nav_users}')."#i", '{$modcp_nav_users}{$canons_modcp}');
 }
 
 function canons_deactivate()
 {
     require MYBB_ROOT . "/inc/adminfunctions_templates.php";
     find_replace_templatesets("header", "#".preg_quote('{$alert_canons}')."#i", '', 0);
-
+    find_replace_templatesets("modcp_nav", "#".preg_quote('{$canons_modcp}')."#i", '', 0);
 }
 
 // Backend Hooks
