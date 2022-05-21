@@ -935,11 +935,12 @@ function canons_misc()
 
         $all_banned_groups = $mybb->settings['canons_banned_groups'];
 
-        // welche User aus welchen Gruppen sollen ausgelesenw erden
-        if(!empty($all_banned_groups)or $all_banned_groups != -1){
+        // welche User aus welchen Gruppen sollen ausgelesen werden
+        if(!empty($all_banned_groups)){
             $banned_groups = "where usergroup NOT IN ($all_banned_groups)";
+        } else{
+            $banned_groups = "";
         }
-
 
 
         $sort = "canon_name";
