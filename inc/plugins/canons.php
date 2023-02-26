@@ -43,6 +43,8 @@ function canons_install()
            `canon_avatar` varchar(500) CHARACTER SET utf8 NOT NULL,  
            `canon_pic` varchar(500) CHARACTER SET utf8 NOT NULL,        
           `canon_reserved` int(10)  DEFAULT 0 NOT NULL,
+           `canon_reserved_name` varchar(500) CHARACTER SET utf8 NOT NULL, 
+           `canon_reserved_time` varchar(500) NOT NULL,  
           `canon_taken` int(10)  DEFAULT 0 NOT NULL,
            `canon_admin` int(10)  DEFAULT 0 NOT NULL,
            `canon_creator` int(10)  DEFAULT 0 NOT NULL,
@@ -51,7 +53,7 @@ function canons_install()
     ");
 
 
-    $db->add_column("usergroups", "canaddcanon", "tinyint NOT NULL default '0'");
+    $db->add_column("usergroups", "canaddcanon", "tinyint NOT NULL default '1'");
     $cache->update_usergroups();
 
     // Einstellung
@@ -92,7 +94,7 @@ function canons_install()
         ),
         'canons_banned_groups' => array(
             'title' => 'Ausgeschlossene Gruppen',
-            'description' => 'Aus welchen Gruppen sollen keine Accounts ausgelesen werden?.',
+            'description' => 'Aus welchen Gruppen sollen keine Accounts bei der Userzuweisung ausgelesen werden? <br /> Dies betrifft die Zuweisung von Canons zu Accounts.',
             'optionscode' => 'groupselect',
             'value' => 0,
             'disporder' => 5
@@ -810,14 +812,14 @@ function canons_activate()
 {
     require MYBB_ROOT . "/inc/adminfunctions_templates.php";
     find_replace_templatesets("header", "#".preg_quote('<navigation>')."#i", '{$alert_canons}<navigation>');
-    find_replace_templatesets("modcp_nav", "#".preg_quote('{$modcp_nav_users}')."#i", '{$modcp_nav_users}{$canons_modcp}');
+
 }
 
 function canons_deactivate()
 {
     require MYBB_ROOT . "/inc/adminfunctions_templates.php";
     find_replace_templatesets("header", "#".preg_quote('{$alert_canons}')."#i", '', 0);
-    find_replace_templatesets("modcp_nav", "#".preg_quote('{$canons_modcp}')."#i", '', 0);
+
 }
 
 // Backend Hooks
@@ -934,13 +936,14 @@ function canons_misc()
         }
 
         $all_banned_groups = $mybb->settings['canons_banned_groups'];
-
-        // welche User aus welchen Gruppen sollen ausgelesen werden
-        if(!empty($all_banned_groups)){
+        $banned_groups = "";
+        // welche User aus welchen Gruppen sollen ausgelesenw erden
+        if(!empty($all_banned_groups)or $all_banned_groups != -1){
             $banned_groups = "where usergroup NOT IN ($all_banned_groups)";
         } else{
             $banned_groups = "";
         }
+
 
 
         $sort = "canon_name";
@@ -950,16 +953,16 @@ function canons_misc()
         $group_filter = "%";
         $blood_filter = "%";
         /*$filter_living = "%";*/
-        $age_filter = "and canon_age != ''";
+        $age_filter = "canon_age != ''";
 
         if(isset($mybb->input['canon_new'])) {
             $sort = $mybb->input['sort_chara'];
             $sortway = $mybb->input['sort_way'];
             $gender_filter = $mybb->input['filter_gender'];
             $group_filter = $mybb->input['filter_group'];
-            $age_filter = "and ".$mybb->input['agespan'];
+            $age_filter = $mybb->input['agespan'];
             $blood_filter = $mybb->input['filter_blood'];
-            $url_extra = "&sort_chara={$sort}&sort_way={$sortway}&agespan={$age_filter}&filter_group={$group_filter}&filter_gender={$gender_filter}&filter_bloond={$blood_filter}&chara_new=Neu+laden";
+            $url_extra = "&sort_chara={$sort}&sort_way={$sortway}&agespan={$age_filter}&filter_gender={$gender_filter}&filter_group={$group_filter}&filter_blood={$blood_filter}&canon_new=Neu+laden";
         }
 
         $select_canons = $db->query("SELECT COUNT(*) AS canons
@@ -967,8 +970,7 @@ function canons_misc()
             WHERE canon_group like '".$group_filter."'
             and canon_gender like '".$gender_filter."'
             and canon_blood like '".$blood_filter."'
-            $age_filter
-            ORDER BY $sort $sortway
+      and $age_filter
         ");
 
         $count = $db->fetch_field($select_canons, "canons");;
@@ -999,7 +1001,7 @@ function canons_misc()
             WHERE canon_group like '".$group_filter."'
             and canon_gender like '".$gender_filter."'
             and canon_blood like '".$blood_filter."'
-            $age_filter
+      and  $age_filter
             ORDER BY $sort $sortway
            LIMIT $start, $perpage 
         ");
@@ -1018,17 +1020,25 @@ function canons_misc()
             $canon_reserv = "";
             $canonblood = "";
             $canons_options = "";
+            $group  = "";
 
+            $canon_groups = explode(", ",$mybb->settings['canons_groups']);
+
+            foreach ($canon_groups as $canon_group){
+                $group .= "<option value='{$canon_group}'>{$canon_group}</option>";
+            }
             eval("\$canon_edit = \"".$templates->get("canons_edit")."\";");
-
             if($mybb->user['uid'] == $row['canon_creator']){
                 eval("\$canons_options = \"".$templates->get("canons_options")."\";");
             }
 
+            if($mybb->usergroup['canmodcp'] == 1){
+                eval("\$canons_options = \"".$templates->get("canons_options")."\";");
+            }
 
             $all_user_query = $db->query("SELECT *
                        from ".TABLE_PREFIX."users
-                       {$banned_groups}
+                       $banned_groups
                        order by username ASC 
                     ");
 
@@ -1038,26 +1048,34 @@ function canons_misc()
             }
 
             eval("\$canons_taken= \"".$templates->get("canons_taken")."\";");
-            if($mybb->usergroup['canmodcp'] == 1) {
 
 
-                eval("\$canons_options = \"".$templates->get("canons_options")."\";");
 
-                if (empty($row['canon_taken'])) {
-                    $canontaken = " <a onclick=\"$('#taken_{$row['canon_id']}').modal({ fadeDuration: 250, keepelement: true, zIndex: (typeof modal_zindex !== 'undefined' ? modal_zindex : 9999) }); return false;\" style=\"cursor: pointer;\">{$lang->canon_taken}</a>
+
+
+            if (empty($row['canon_taken'])) {
+                    if($mybb->usergroup['canmodcp'] == 1) {
+                        $canontaken = " <a onclick=\"$('#taken_{$row['canon_id']}').modal({ fadeDuration: 250, keepelement: true, zIndex: (typeof modal_zindex !== 'undefined' ? modal_zindex : 9999) }); return false;\" style=\"cursor: pointer;\">{$lang->canon_taken}</a>
                                             <div class='modal' id='taken_{$row['canon_id']}' style='display: none;'>{$canons_taken}</div>";
+                    } else{
+                        $canontaken = "";
+                    }
                     $canonname = $row['canon_name'].$canontaken;
                 } else {
                     $taken_user_query = $db->simple_select("users", "*",
                         "uid = {$row['canon_taken']}");
                     $taken_user = $db->fetch_array($taken_user_query);
-
-                    $canontaken = " <a href='misc.php?action=canons&nottaken_canon={$row['canon_id']}'>{$lang->canon_taken_off}</a>";
+                    if($mybb->usergroup['canmodcp'] == 1) {
+                        $canontaken = " <a href='misc.php?action=canons&nottaken_canon={$row['canon_id']}'>{$lang->canon_taken_off}</a>";
+                    }
+                    else{
+                            $canontaken = "";
+                        }
                     $username = format_name($taken_user['username'], $taken_user['usergroup'], $taken_user['displaygroup']);
                     $canonname = build_profile_link($username, $taken_user['uid']).$canontaken;
 
                 }
-            }
+
 
 
 
@@ -1107,7 +1125,7 @@ function canons_misc()
         if(isset($mybb->input['reserv_canon_guest'])){
             $canon_id = $_POST['canon_id'];
             $guest_reserv_array = array(
-                "canon_reserved_name" => $db->escape_string($_POST['reserv_name']),
+                "canon_name" => $db->escape_string($_POST['reserv_name']),
                 "canon_reserved_time" => TIME_NOW,
             );
 
