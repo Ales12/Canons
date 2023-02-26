@@ -12,7 +12,7 @@ function canons_info()
     return array(
         "name"			=> "Canons",
         "description"	=> "Mit diesen Plugin kannst du eine Übersicht an Canons erstellen, welche Gäste/User mit einen klick für sich Reservieren können.",
-        "website"		=> "",
+        "website"		=> "https://github.com/Ales12/Canons",
         "author"		=> "Ales",
         "authorsite"	=> "https://github.com/Ales12",
         "version"		=> "1.0",
@@ -44,7 +44,7 @@ function canons_install()
            `canon_pic` varchar(500) CHARACTER SET utf8 NOT NULL,        
           `canon_reserved` int(10)  DEFAULT 0 NOT NULL,
            `canon_reserved_name` varchar(500) CHARACTER SET utf8 NOT NULL, 
-           `canon_reserved_time` varchar(500) NOT NULL,  
+           `canon_reserved_time` varchar(500) CHARACTER SET utf8 NOT NULL,  
           `canon_taken` int(10)  DEFAULT 0 NOT NULL,
            `canon_admin` int(10)  DEFAULT 0 NOT NULL,
            `canon_creator` int(10)  DEFAULT 0 NOT NULL,
@@ -1054,27 +1054,27 @@ function canons_misc()
 
 
             if (empty($row['canon_taken'])) {
-                    if($mybb->usergroup['canmodcp'] == 1) {
-                        $canontaken = " <a onclick=\"$('#taken_{$row['canon_id']}').modal({ fadeDuration: 250, keepelement: true, zIndex: (typeof modal_zindex !== 'undefined' ? modal_zindex : 9999) }); return false;\" style=\"cursor: pointer;\">{$lang->canon_taken}</a>
+                if($mybb->usergroup['canmodcp'] == 1) {
+                    $canontaken = " <a onclick=\"$('#taken_{$row['canon_id']}').modal({ fadeDuration: 250, keepelement: true, zIndex: (typeof modal_zindex !== 'undefined' ? modal_zindex : 9999) }); return false;\" style=\"cursor: pointer;\">{$lang->canon_taken}</a>
                                             <div class='modal' id='taken_{$row['canon_id']}' style='display: none;'>{$canons_taken}</div>";
-                    } else{
-                        $canontaken = "";
-                    }
-                    $canonname = $row['canon_name'].$canontaken;
-                } else {
-                    $taken_user_query = $db->simple_select("users", "*",
-                        "uid = {$row['canon_taken']}");
-                    $taken_user = $db->fetch_array($taken_user_query);
-                    if($mybb->usergroup['canmodcp'] == 1) {
-                        $canontaken = " <a href='misc.php?action=canons&nottaken_canon={$row['canon_id']}'>{$lang->canon_taken_off}</a>";
-                    }
-                    else{
-                            $canontaken = "";
-                        }
-                    $username = format_name($taken_user['username'], $taken_user['usergroup'], $taken_user['displaygroup']);
-                    $canonname = build_profile_link($username, $taken_user['uid']).$canontaken;
-
+                } else{
+                    $canontaken = "";
                 }
+                $canonname = $row['canon_name'].$canontaken;
+            } else {
+                $taken_user_query = $db->simple_select("users", "*",
+                    "uid = {$row['canon_taken']}");
+                $taken_user = $db->fetch_array($taken_user_query);
+                if($mybb->usergroup['canmodcp'] == 1) {
+                    $canontaken = " <a href='misc.php?action=canons&nottaken_canon={$row['canon_id']}'>{$lang->canon_taken_off}</a>";
+                }
+                else{
+                    $canontaken = "";
+                }
+                $username = format_name($taken_user['username'], $taken_user['usergroup'], $taken_user['displaygroup']);
+                $canonname = build_profile_link($username, $taken_user['uid']).$canontaken;
+
+            }
 
 
 
